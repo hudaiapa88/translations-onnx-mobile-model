@@ -1,4 +1,4 @@
-# ONNX Translation Model Setup Requirements
+# Multi-Language ONNX Translation Models Setup Requirements
 # Python 3.8+ required
 
 # Core dependencies
@@ -8,12 +8,22 @@ optimum[onnxruntime]>=1.13.0
 onnx>=1.14.0
 onnxruntime>=1.15.0
 
-# Quantization support
+# Quantization and optimization support
 onnxruntime-tools>=1.7.0
+# onnxoptimizer>=0.3.0  # Requires CMake - skipped
+
+# Model download and management
+huggingface-hub>=0.16.0
+sentencepiece>=0.1.99
 
 # Utilities
-sentencepiece>=0.1.99
 protobuf>=3.20.0
 numpy>=1.24.0
 tqdm>=4.65.0
-huggingface-hub>=0.16.0
+colorama>=0.4.6
+
+# Testing
+pytest>=7.0.0
+
+# Optional: For faster downloads
+aiohttp>=3.8.0

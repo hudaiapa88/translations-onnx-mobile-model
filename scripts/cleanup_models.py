@@ -1,57 +1,80 @@
 """
-Cleanup script to fix quantized models and remove duplicates
+Final cleanup script - Removes unnecessary files from ALL model directories
+Keeps only files required by onnx_translation package for space optimization
+Run this after download_all_languages.py to clean up all language pairs
 """
 
-import shutil
 from pathlib import Path
 
-OUTPUT_DIR = Path(__file__).parent.parent / "onnx_models" / "en-tr"
+BASE_DIR = Path(__file__).parent.parent
+MODELS_DIR = BASE_DIR / "onnx_models"
+
+# Files required by onnx_translation package
+REQUIRED_FILES = {
+    'encoder_model.onnx',
+    'decoder_model.onnx',
+    'vocab.json',
+    'tokenizer_config.json',
+    'generation_config.json',
+    'special_tokens_map.json',  # Optional but useful
+    'metadata.json',  # Created by script
+    'README.md',  # Documentation (if exists)
+}
 
 print("\n" + "="*60)
-print("Cleaning up ONNX model directory")
+print("Final Cleanup - Space Optimization")
+print("Removing unnecessary files from ALL model directories")
 print("="*60 + "\n")
 
-# Files to keep (quantized versions)
-keep_files = [
-    "encoder_model__encoder.onnx",
-    "decoder_model__decoder.onnx", 
-    "decoder_with_past_model__decoder_with_past.onnx",
-]
+total_removed = 0
+total_size_saved = 0
 
-# Target names
-target_names = [
-    "encoder_model.onnx",
-    "decoder_model.onnx",
-    "decoder_with_past_model.onnx",
-]
+# Process all language pair directories
+pair_dirs = sorted([d for d in MODELS_DIR.glob("*-*") if d.is_dir()])
 
-# Rename quantized files to standard names
-for old_name, new_name in zip(keep_files, target_names):
-    old_path = OUTPUT_DIR / old_name
-    new_path = OUTPUT_DIR / new_name
+if not pair_dirs:
+    print("✗ No language pair directories found!")
+    print(f"  Expected location: {MODELS_DIR}")
+else:
+    print(f"Found {len(pair_dirs)} language pair directories\n")
     
-    if old_path.exists():
-        if new_path.exists():
-            new_path.unlink()
-            print(f"✓ Removed old: {new_name}")
+    for pair_dir in pair_dirs:
+        pair_name = pair_dir.name
+        removed_count = 0
+        size_saved = 0
         
-        shutil.move(str(old_path), str(new_path))
-        print(f"✓ Renamed: {old_name} → {new_name}")
+        # Check each file
+        for file in pair_dir.glob("*"):
+            if file.is_file() and file.name not in REQUIRED_FILES:
+                size_mb = file.stat().st_size / (1024 * 1024)
+                file.unlink()
+                removed_count += 1
+                size_saved += size_mb
+        
+        if removed_count > 0:
+            print(f"✓ {pair_name}: Removed {removed_count} file(s), saved {size_saved:.1f} MB")
+            total_removed += removed_count
+            total_size_saved += size_saved
 
-# Remove any other .onnx files (duplicates)
-for file in OUTPUT_DIR.glob("*.onnx"):
-    if file.name not in target_names:
-        size_mb = file.stat().st_size / (1024 * 1024)
-        file.unlink()
-        print(f"✓ Deleted duplicate: {file.name} ({size_mb:.1f} MB)")
+if total_removed > 0:
+    print(f"\n{'='*60}")
+    print(f"Total files removed: {total_removed}")
+    print(f"Total space saved: {total_size_saved:.1f} MB ({total_size_saved/1024:.2f} GB)")
+    print(f"{'='*60}\n")
+else:
+    print("\n✓ All directories are already optimized!\n")
 
-# Calculate final size
+print("✓ Cleanup complete! Only required files remain.\n")
+
+# Show final statistics
+print("Final Statistics:")
+print("="*60)
 total_size = 0
-print("\nFinal model files:")
-for file in sorted(OUTPUT_DIR.glob("*.onnx")):
-    size_mb = file.stat().st_size / (1024 * 1024)
-    total_size += size_mb
-    print(f"  {file.name:40s} {size_mb:>8.2f} MB")
+for pair_dir in pair_dirs:
+    pair_size = sum(f.stat().st_size for f in pair_dir.glob("*.onnx"))
+    total_size += pair_size
 
-print(f"\n{'Total size:':40s} {total_size:>8.2f} MB")
-print("\n✓ Cleanup complete!\n")
+if pair_dirs:
+    print(f"Total ONNX models size: {total_size / (1024**3):.2f} GB")
+    print(f"Average per language pair: {(total_size / len(pair_dirs)) / (1024**2):.1f} MB")
+print("="*60 + "\n")
